@@ -1,10 +1,10 @@
 # game
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Game</title>
+    <title>Kiên Săn Cục Cứt - Snake Game</title>
     <style>
         * {
             margin: 0;
@@ -38,7 +38,6 @@
             background-color: #1a1a2e;
             display: block;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-            cursor: none;
         }
 
         .scoreboard {
@@ -79,16 +78,6 @@
             border-radius: 10px;
             max-width: 600px;
             backdrop-filter: blur(10px);
-        }
-
-        .controls h3 {
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .controls p {
-            margin: 5px 0;
         }
 
         .button-group {
@@ -143,25 +132,25 @@
 </head>
 <body>
     <div class="container">
-        <h1>🏓 PONG GAME</h1>
-        <canvas id="gameCanvas" width="600" height="400"></canvas>
+        <h1>🐍 KIÊN SĂN CỤC CỨT 💩</h1>
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
 
         <div class="scoreboard">
             <div class="score-section">
-                <h2>Player</h2>
-                <div class="score" id="playerScore">0</div>
+                <h2>Score</h2>
+                <div class="score" id="score">0</div>
             </div>
             <div class="score-section">
-                <h2>Computer</h2>
-                <div class="score" id="computerScore">0</div>
+                <h2>Độ Dài Rắn</h2>
+                <div class="score" id="length">1</div>
             </div>
         </div>
 
         <div class="controls">
-            <h3>Controls</h3>
-            <p>🖱️ Mouse Y Position or ⬆️⬇️ Arrow Keys to Move Left Paddle</p>
-            <p>Computer controls the right paddle automatically</p>
-            <p>First to 5 points wins! 🎉</p>
+            <h3>Điều Khiển</h3>
+            <p>⬆️⬇️⬅️➡️ Mũi tên hoặc W/A/S/D để điều khiển rắn Kiên</p>
+            <p>Ăn 💩 để mọc thêm thân và tăng điểm</p>
+            <p>Đừng va vào tường hoặc chính mình!</p>
         </div>
 
         <div class="button-group">
@@ -171,278 +160,228 @@
     </div>
 
     <script>
-        // Canvas and Context
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Game Objects
-        const paddleHeight = 80;
-        const paddleWidth = 15;
-        const ballSize = 8;
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
 
-        let playerPaddle = {
-            x: 10,
-            y: canvas.height / 2 - paddleHeight / 2,
-            width: paddleWidth,
-            height: paddleHeight,
-            dy: 0,
-            speed: 5
+        let snake = [
+            {x: Math.floor(tileCount / 2), y: Math.floor(tileCount / 2)}
+        ];
+
+        let food = {
+            x: Math.floor(Math.random() * tileCount),
+            y: Math.floor(Math.random() * tileCount)
         };
 
-        let computerPaddle = {
-            x: canvas.width - paddleWidth - 10,
-            y: canvas.height / 2 - paddleHeight / 2,
-            width: paddleWidth,
-            height: paddleHeight,
-            speed: 3.5
-        };
+        let direction = {x: 1, y: 0};
+        let nextDirection = {x: 1, y: 0};
+        let score = 0;
+        let gameRunning = false;
+        let gameOver = false;
 
-        let ball = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            dx: 5,
-            dy: 5,
-            radius: ballSize,
-            maxSpeed: 8
-        };
-
-        let gameState = {
-            playerScore: 0,
-            computerScore: 0,
-            gameRunning: false,
-            gameWon: false,
-            winningPlayer: null
-        };
-
-        // Keyboard Input
         const keys = {};
 
         window.addEventListener('keydown', (e) => {
             keys[e.key] = true;
 
             // Arrow keys
-            if (e.key === 'ArrowUp') {
-                playerPaddle.dy = -playerPaddle.speed;
-            } else if (e.key === 'ArrowDown') {
-                playerPaddle.dy = playerPaddle.speed;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+                if (direction.y === 0) nextDirection = {x: 0, y: -1};
+            } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+                if (direction.y === 0) nextDirection = {x: 0, y: 1};
+            } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                if (direction.x === 0) nextDirection = {x: -1, y: 0};
+            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                if (direction.x === 0) nextDirection = {x: 1, y: 0};
             }
         });
-
-        window.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-
-            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-                playerPaddle.dy = 0;
-            }
-        });
-
-        // Mouse Movement for paddle control
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const mouseY = e.clientY - rect.top;
-
-            // Calculate paddle position based on mouse, with boundaries
-            let newY = mouseY - paddleHeight / 2;
-            newY = Math.max(0, Math.min(newY, canvas.height - paddleHeight));
-
-            playerPaddle.y = newY;
-        });
-
-        // Drawing Functions
-        function drawRectangle(x, y, width, height, color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, width, height);
-        }
-
-        function drawCircle(x, y, radius, color) {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        function drawDashedLine() {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.setLineDash([10, 10]);
-            ctx.beginPath();
-            ctx.moveTo(canvas.width / 2, 0);
-            ctx.lineTo(canvas.width / 2, canvas.height);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
 
         function drawGame() {
             // Clear canvas
-            drawRectangle(0, 0, canvas.width, canvas.height, '#1a1a2e');
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw center line
-            drawDashedLine();
+            // Draw grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= tileCount; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * gridSize, 0);
+                ctx.lineTo(i * gridSize, canvas.height);
+                ctx.stroke();
 
-            // Draw paddles
-            drawRectangle(playerPaddle.x, playerPaddle.y, playerPaddle.width, playerPaddle.height, '#00ff88');
-            drawRectangle(computerPaddle.x, computerPaddle.y, computerPaddle.width, computerPaddle.height, '#ff0055');
+                ctx.beginPath();
+                ctx.moveTo(0, i * gridSize);
+                ctx.lineTo(canvas.width, i * gridSize);
+                ctx.stroke();
+            }
 
-            // Draw ball
-            drawCircle(ball.x, ball.y, ball.radius, '#ffd700');
+            // Draw snake
+            snake.forEach((segment, index) => {
+                if (index === 0) {
+                    // Head - màu xanh sáng
+                    ctx.fillStyle = '#00ff88';
+                } else {
+                    // Body - màu xanh đậm hơn
+                    ctx.fillStyle = '#00cc66';
+                }
+                ctx.fillRect(
+                    segment.x * gridSize + 1,
+                    segment.y * gridSize + 1,
+                    gridSize - 2,
+                    gridSize - 2
+                );
 
-            // Draw scores in corner
+                // Draw eyes on head
+                if (index === 0) {
+                    ctx.fillStyle = 'black';
+                    const eyeSize = 3;
+                    if (direction.x === 1) { // Moving right
+                        ctx.fillRect(segment.x * gridSize + 12, segment.y * gridSize + 6, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x * gridSize + 12, segment.y * gridSize + 12, eyeSize, eyeSize);
+                    } else if (direction.x === -1) { // Moving left
+                        ctx.fillRect(segment.x * gridSize + 5, segment.y * gridSize + 6, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x * gridSize + 5, segment.y * gridSize + 12, eyeSize, eyeSize);
+                    } else if (direction.y === -1) { // Moving up
+                        ctx.fillRect(segment.x * gridSize + 6, segment.y * gridSize + 5, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x * gridSize + 12, segment.y * gridSize + 5, eyeSize, eyeSize);
+                    } else if (direction.y === 1) { // Moving down
+                        ctx.fillRect(segment.x * gridSize + 6, segment.y * gridSize + 12, eyeSize, eyeSize);
+                        ctx.fillRect(segment.x * gridSize + 12, segment.y * gridSize + 12, eyeSize, eyeSize);
+                    }
+                }
+            });
+
+            // Draw food (poop emoji style)
+            ctx.fillStyle = '#8B4513';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('💩', food.x * gridSize + gridSize / 2, food.y * gridSize + gridSize / 2);
+
+            // Draw scores
             ctx.fillStyle = 'white';
             ctx.font = '20px Arial';
-            ctx.fillText('Player: ' + gameState.playerScore, 20, 30);
-            ctx.fillText('Computer: ' + gameState.computerScore, canvas.width - 200, 30);
+            ctx.textAlign = 'left';
+            ctx.fillText('Score: ' + score, 20, 30);
+            ctx.fillText('Length: ' + snake.length, 20, 60);
 
             // Draw game status
-            if (!gameState.gameRunning && !gameState.gameWon) {
+            if (!gameRunning && !gameOver) {
                 ctx.font = 'bold 30px Arial';
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.textAlign = 'center';
                 ctx.fillText('Press Start to Begin', canvas.width / 2, canvas.height / 2);
-                ctx.textAlign = 'left';
             }
 
-            if (gameState.gameWon) {
+            if (gameOver) {
                 ctx.font = 'bold 40px Arial';
-                ctx.fillStyle = '#ffd700';
+                ctx.fillStyle = '#ff0055';
                 ctx.textAlign = 'center';
-                const winner = gameState.winningPlayer === 'player' ? '🎉 YOU WIN! 🎉' : '💻 COMPUTER WINS! 💻';
-                ctx.fillText(winner, canvas.width / 2, canvas.height / 2);
+                ctx.fillText('GAME OVER!', canvas.width / 2, canvas.height / 2);
                 ctx.font = '20px Arial';
                 ctx.fillStyle = 'white';
-                ctx.fillText('Press Reset to Play Again', canvas.width / 2, canvas.height / 2 + 40);
-                ctx.textAlign = 'left';
+                ctx.fillText('Score: ' + score, canvas.width / 2, canvas.height / 2 + 40);
+                ctx.fillText('Press Reset to Play Again', canvas.width / 2, canvas.height / 2 + 80);
             }
         }
 
-        // Update Functions
-        function updateBall() {
-            ball.x += ball.dx;
-            ball.y += ball.dy;
+        function updateGame() {
+            if (!gameRunning || gameOver) return;
 
-            // Wall collision (top and bottom)
-            if (ball.y - ball.radius < 0 || ball.y + ball.radius > canvas.height) {
-                ball.dy = -ball.dy;
-                ball.y = Math.max(ball.radius, Math.min(canvas.height - ball.radius, ball.y));
+            direction = nextDirection;
+
+            // Move snake
+            const head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+
+            // Check wall collision
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                gameOver = true;
+                return;
             }
 
-            // Paddle collision - Player
-            if (
-                ball.x - ball.radius < playerPaddle.x + playerPaddle.width &&
-                ball.y > playerPaddle.y &&
-                ball.y < playerPaddle.y + playerPaddle.height
-            ) {
-                ball.dx = -ball.dx;
-                ball.x = playerPaddle.x + playerPaddle.width + ball.radius;
-
-                // Add spin based on where the ball hit the paddle
-                const hitPos = (ball.y - (playerPaddle.y + playerPaddle.height / 2)) / (playerPaddle.height / 2);
-                ball.dy += hitPos * 3;
-
-                // Limit speed
-                ball.dx = Math.max(-ball.maxSpeed, Math.min(ball.maxSpeed, ball.dx));
-                ball.dy = Math.max(-ball.maxSpeed, Math.min(ball.maxSpeed, ball.dy));
-            }
-
-            // Paddle collision - Computer
-            if (
-                ball.x + ball.radius > computerPaddle.x &&
-                ball.y > computerPaddle.y &&
-                ball.y < computerPaddle.y + computerPaddle.height
-            ) {
-                ball.dx = -ball.dx;
-                ball.x = computerPaddle.x - ball.radius;
-
-                // Add spin based on where the ball hit the paddle
-                const hitPos = (ball.y - (computerPaddle.y + computerPaddle.height / 2)) / (computerPaddle.height / 2);
-                ball.dy += hitPos * 3;
-
-                // Limit speed
-                ball.dx = Math.max(-ball.maxSpeed, Math.min(ball.maxSpeed, ball.dx));
-                ball.dy = Math.max(-ball.maxSpeed, Math.min(ball.maxSpeed, ball.dy));
-            }
-
-            // Out of bounds (left and right) - Score
-            if (ball.x - ball.radius < 0) {
-                gameState.computerScore++;
-                if (gameState.computerScore >= 5) {
-                    gameState.gameRunning = false;
-                    gameState.gameWon = true;
-                    gameState.winningPlayer = 'computer';
+            // Check self collision
+            for (let segment of snake) {
+                if (head.x === segment.x && head.y === segment.y) {
+                    gameOver = true;
+                    return;
                 }
-                resetBall();
-            } else if (ball.x + ball.radius > canvas.width) {
-                gameState.playerScore++;
-                if (gameState.playerScore >= 5) {
-                    gameState.gameRunning = false;
-                    gameState.gameWon = true;
-                    gameState.winningPlayer = 'player';
+            }
+
+            snake.unshift(head);
+
+            // Check food collision
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                generateFood();
+                document.getElementById('score').textContent = score;
+                document.getElementById('length').textContent = snake.length;
+            } else {
+                snake.pop();
+            }
+        }
+
+        function generateFood() {
+            let newFood;
+            let isOnSnake;
+            do {
+                isOnSnake = false;
+                newFood = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+                for (let segment of snake) {
+                    if (newFood.x === segment.x && newFood.y === segment.y) {
+                        isOnSnake = true;
+                        break;
+                    }
                 }
-                resetBall();
-            }
-
-            updateScoreboard();
+            } while (isOnSnake);
+            food = newFood;
         }
 
-        function updateComputerPaddle() {
-            const computerCenter = computerPaddle.y + computerPaddle.height / 2;
-            const ballCenter = ball.y;
-
-            // Simple AI: move towards the ball with some difficulty
-            if (computerCenter < ballCenter - 35) {
-                computerPaddle.y += computerPaddle.speed;
-            } else if (computerCenter > ballCenter + 35) {
-                computerPaddle.y -= computerPaddle.speed;
-            }
-
-            // Boundary check
-            computerPaddle.y = Math.max(0, Math.min(canvas.height - computerPaddle.height, computerPaddle.y));
-        }
-
-        function resetBall() {
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height / 2;
-            ball.dx = (Math.random() > 0.5 ? 1 : -1) * 5;
-            ball.dy = (Math.random() - 0.5) * 8;
-        }
-
-        function updateScoreboard() {
-            document.getElementById('playerScore').textContent = gameState.playerScore;
-            document.getElementById('computerScore').textContent = gameState.computerScore;
-        }
-
-        // Game Loop
         function gameLoop() {
-            if (gameState.gameRunning) {
-                updateBall();
-                updateComputerPaddle();
-            }
-
+            updateGame();
             drawGame();
             requestAnimationFrame(gameLoop);
         }
 
-        // Start and Reset Functions
         function startGame() {
-            if (!gameState.gameRunning && !gameState.gameWon) {
-                gameState.gameRunning = true;
-                resetBall();
+            if (!gameRunning && !gameOver) {
+                gameRunning = true;
             }
         }
 
         function resetGame() {
-            gameState.playerScore = 0;
-            gameState.computerScore = 0;
-            gameState.gameRunning = false;
-            gameState.gameWon = false;
-            gameState.winningPlayer = null;
-            resetBall();
-            playerPaddle.y = canvas.height / 2 - paddleHeight / 2;
-            computerPaddle.y = canvas.height / 2 - paddleHeight / 2;
-            updateScoreboard();
+            snake = [{x: Math.floor(tileCount / 2), y: Math.floor(tileCount / 2)}];
+            direction = {x: 1, y: 0};
+            nextDirection = {x: 1, y: 0};
+            score = 0;
+            gameRunning = false;
+            gameOver = false;
+            generateFood();
+            document.getElementById('score').textContent = '0';
+            document.getElementById('length').textContent = '1';
         }
 
-        // Initialize and start the game loop
-        updateScoreboard();
-        gameLoop();
+        // Set game speed (mili giây giữa mỗi bước)
+        let gameSpeed = 100;
+        let lastUpdate = 0;
+
+        function optimizedGameLoop(timestamp) {
+            if (timestamp - lastUpdate > gameSpeed) {
+                updateGame();
+                lastUpdate = timestamp;
+            }
+            drawGame();
+            requestAnimationFrame(optimizedGameLoop);
+        }
+
+        // Start
+        drawGame();
+        requestAnimationFrame(optimizedGameLoop);
     </script>
 </body>
 </html>
