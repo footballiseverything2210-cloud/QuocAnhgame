@@ -1,4 +1,5 @@
 
+<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -17,12 +18,21 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: url('https://media.discordapp.net/attachments/6e46f401-fa81-48d9-b946-f742e1be7b31.jfif') center/cover fixed;
             background-attachment: fixed;
             font-family: 'Arial', sans-serif;
-            background-image: 
-                linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%),
-                repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 70px);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: -1;
+            pointer-events: none;
         }
 
         .container {
@@ -176,7 +186,8 @@
             <p>⬆️⬇️⬅️➡️ Mũi tên hoặc W/A/S/D để điều khiển</p>
             <p>💩 Ăn cục cứt để mọc thêm thân và tăng điểm</p>
             <p>⚡ Rắn càng dài, chạy càng nhanh!</p>
-            <p>❌ Đừng va vào tường hoặc chính mình!</p>
+            <p>🌀 Chạy xuyên tường sẽ sang phía bên kia</p>
+            <p>❌ Chỉ chết khi cắn vào chính mình!</p>
         </div>
 
         <div class="button-group">
@@ -361,15 +372,19 @@
             direction = nextDirection;
 
             // Move snake
-            const head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+            let newX = snake[0].x + direction.x;
+            let newY = snake[0].y + direction.y;
 
-            // Check wall collision
-            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
-                gameOver = true;
-                return;
-            }
+            // WRAPAROUND MODE - Chạy xuyên tường
+            // Nếu vượt ra ngoài, sẽ xuất hiện ở phía bên kia
+            if (newX < 0) newX = tileCount - 1;
+            if (newX >= tileCount) newX = 0;
+            if (newY < 0) newY = tileCount - 1;
+            if (newY >= tileCount) newY = 0;
 
-            // Check self collision
+            const head = {x: newX, y: newY};
+
+            // Check self collision - CHỈ CHẾT KHI CẮN VÀO CHÍNH MÌNH
             for (let segment of snake) {
                 if (head.x === segment.x && head.y === segment.y) {
                     gameOver = true;
