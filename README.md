@@ -1,5 +1,4 @@
 # game
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -19,7 +18,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: url('https://media.discordapp.net/attachments/6e46f401-fa81-48d9-b946-f742e1be7b31.jfif') center/cover fixed;
+            background: url('https://media.discordapp.net/attachments/6e46f401-fa81-48d9-b946-f742e1be7b31.png') center/cover fixed;
             background-attachment: fixed;
             font-family: 'Arial', sans-serif;
         }
